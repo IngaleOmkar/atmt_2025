@@ -31,8 +31,7 @@ python preprocess.py \
     --src-vocab-size 1000 \
     --tgt-vocab-size 1000 \
     --ignore-existing \
-    --force-train \
-    --cuda
+    --force-train 
 
 python train.py \
     --data toy_example/data/prepared/ \
