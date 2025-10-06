@@ -19,5 +19,5 @@ python translate.py \
     --src-tokenizer cz-en/tokenizers/cz-bpe-8000.model \
     --tgt-tokenizer cz-en/tokenizers/en-bpe-8000.model \
     --checkpoint-path cz-en/checkpoints/checkpoint_best.pt \
-    --output cz-en/output/output.txt \
+    --output ~/data/atmt_2025/cz-en/output/output.txt \
     --max-len 300
