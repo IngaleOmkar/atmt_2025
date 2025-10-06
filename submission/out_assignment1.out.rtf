@@ -1,0 +1,70 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2865
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 MesloLGSForPowerline-Regular;}
+{\colortbl;\red255\green255\blue255;\red47\green255\blue18;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c15686\c99608\c7843;\csgray\c0\c90000;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf2 \cb3 \CocoaLigature0 Filesystems usage for user oingal ( uid 646308665 ):\
+-------------------------------------------------------------------------------------\
+Directory                       Used   Limit   Used,%         Files     Limit\
+-------------------------------------------------------------------------------------\
+/home/oingal                    27KB    15GB     0.0%            33    100000\
+/data/oingal                    14GB   200GB     6.5%         40252          \
+/scratch/oingal                   0B    20TB     0.0%             1          \
+\
+/shares/atomt.pilot.s3it.uzh   1.4GB    10TB     0.0%            13          \
+-------------------------------------------------------------------------------------\
+\
+Files on /scratch may be purged after 30 days.\
+See https://docs.s3it.uzh.ch/cluster/data\
+\
+INFO:root:Loaded SentencePiece model for cz from ./cz-en/tokenizers/cz-bpe-8000.model\
+INFO:root:Loaded SentencePiece model for en from ./cz-en/tokenizers/en-bpe-8000.model\
+INFO:root:File ./cz-en/data/prepared/train.cz already exists, skipping...\
+INFO:root:File ./cz-en/data/prepared/valid.cz already exists, skipping...\
+INFO:root:File ./cz-en/data/prepared/test.cz already exists, skipping...\
+INFO:root:File ./cz-en/data/prepared/train.en already exists, skipping...\
+INFO:root:File ./cz-en/data/prepared/valid.en already exists, skipping...\
+INFO:root:File ./cz-en/data/prepared/test.en already exists, skipping...\
+INFO:root:Data processing complete!\
+Vocabulary saved to cz-en/tokenizers/cz-bpe-8000.vocab\
+Vocabulary saved to cz-en/tokenizers/en-bpe-8000.vocab\
+Commencing training!\
+COMMAND: train.py --cuda --data cz-en/data/prepared/ --src-tokenizer cz-en/tokenizers/cz-bpe-8000.model --tgt-tokenizer cz-en/tokenizers/en-bpe-8000.model --source-lang cz --target-lang en --batch-size 64 --arch transformer --max-epoch 7 --log-file cz-en/logs/train.log --save-dir cz-en/checkpoints/ --ignore-checkpoints --encoder-dropout 0.1 --decoder-dropout 0.1 --dim-embedding 256 --attention-heads 4 --dim-feedforward-encoder 1024 --dim-feedforward-decoder 1024 --max-seq-len 300 --n-encoder-layers 3 --n-decoder-layers 3\
+Arguments: \{'cuda': True, 'data': 'cz-en/data/prepared/', 'source_lang': 'cz', 'target_lang': 'en', 'src_tokenizer': 'cz-en/tokenizers/cz-bpe-8000.model', 'tgt_tokenizer': 'cz-en/tokenizers/en-bpe-8000.model', 'max_tokens': None, 'batch_size': 64, 'train_on_tiny': False, 'arch': 'transformer', 'max_epoch': 7, 'clip_norm': 4.0, 'lr': 0.0003, 'patience': 3, 'max_length': 300, 'log_file': 'cz-en/logs/train.log', 'save_dir': 'cz-en/checkpoints/', 'restore_file': 'checkpoint_last.pt', 'save_interval': 1, 'no_save': False, 'epoch_checkpoints': False, 'ignore_checkpoints': True, 'encoder_dropout': 0.1, 'decoder_dropout': 0.1, 'dim_embedding': 256, 'attention_heads': 4, 'dim_feedforward_encoder': 1024, 'dim_feedforward_decoder': 1024, 'max_seq_len': 300, 'n_encoder_layers': 3, 'n_decoder_layers': 3, 'encoder_embed_path': None, 'decoder_embed_path': None, 'seed': 852449708\}\
+Built a model with 11831872 parameters\
+Epoch 000: loss 1.951 | lr 0.0003 | num_tokens 18.48 | batch_size 64 | grad_norm 17.8 | clip 0.9406                                                           \
+Time to complete epoch 000 (training only): 9733.27 seconds\
+Epoch 000: valid_loss 2.35 | num_tokens 18 | batch_size 5e+03 | valid_perplexity 10.5 | BLEU 7.904\
+Epoch 001: loss 1.574 | lr 0.0003 | num_tokens 18.48 | batch_size 64 | grad_norm 13.62 | clip 0.8962                                                          \
+Time to complete epoch 001 (training only): 9487.60 seconds\
+Epoch 001: valid_loss 2.09 | num_tokens 18 | batch_size 5e+03 | valid_perplexity 8.11 | BLEU 13.329\
+Epoch 002: loss 1.469 | lr 0.0003 | num_tokens 18.48 | batch_size 64 | grad_norm 13.35 | clip 0.8667                                                          \
+Time to complete epoch 002 (training only): 9453.25 seconds\
+Epoch 002: valid_loss 1.99 | num_tokens 18 | batch_size 5e+03 | valid_perplexity 7.35 | BLEU 12.242\
+Epoch 003: loss 1.413 | lr 0.0003 | num_tokens 18.48 | batch_size 64 | grad_norm 14.14 | clip 0.8673                                                          \
+Time to complete epoch 003 (training only): 9437.53 seconds\
+Epoch 003: valid_loss 1.9 | num_tokens 18 | batch_size 5e+03 | valid_perplexity 6.72 | BLEU 13.358\
+Epoch 004: loss 1.376 | lr 0.0003 | num_tokens 18.48 | batch_size 64 | grad_norm 15.31 | clip 0.8778                                                          \
+Time to complete epoch 004 (training only): 9532.73 seconds\
+Epoch 004: valid_loss 1.88 | num_tokens 18 | batch_size 5e+03 | valid_perplexity 6.52 | BLEU 15.323\
+Epoch 005: loss 1.35 | lr 0.0003 | num_tokens 18.48 | batch_size 64 | grad_norm 16.6 | clip 0.892                                                             \
+Time to complete epoch 005 (training only): 9734.95 seconds\
+Epoch 005: valid_loss 1.82 | num_tokens 18 | batch_size 5e+03 | valid_perplexity 6.19 | BLEU 16.011\
+Epoch 006: loss 1.331 | lr 0.0003 | num_tokens 18.48 | batch_size 64 | grad_norm 17.93 | clip 0.9049                                                          \
+Time to complete epoch 006 (training only): 9586.93 seconds\
+Epoch 006: valid_loss 1.79 | num_tokens 18 | batch_size 5e+03 | valid_perplexity 5.98 | BLEU 15.998\
+Loading the best model for final evaluation on the test set\
+Loaded checkpoint cz-en/checkpoints/checkpoint_last.pt\
+Test set results: BLEU 12.575                                    \
+Final Test Set Results: BLEU 12.57\
+[2025-10-05 17:00:12] COMMAND: translate.py --cuda --input cz-en/data/raw/test.cz --src-tokenizer cz-en/tokenizers/cz-bpe-8000.model --tgt-tokenizer cz-en/tokenizers/en-bpe-8000.model --checkpoint-path cz-en/checkpoints/checkpoint_best.pt --output cz-en/output.txt --max-len 300\
+[2025-10-05 17:00:12] Arguments: \{'cuda': True, 'data': 'cz-en/data/prepared/', 'source_lang': 'cz', 'target_lang': 'en', 'src_tokenizer': 'cz-en/tokenizers/cz-bpe-8000.model', 'tgt_tokenizer': 'cz-en/tokenizers/en-bpe-8000.model', 'max_tokens': None, 'batch_size': 1, 'train_on_tiny': False, 'arch': 'transformer', 'max_epoch': 7, 'clip_norm': 4.0, 'lr': 0.0003, 'patience': 3, 'max_length': 300, 'log_file': 'cz-en/logs/train.log', 'save_dir': 'cz-en/checkpoints/', 'restore_file': 'checkpoint_last.pt', 'save_interval': 1, 'no_save': False, 'epoch_checkpoints': False, 'ignore_checkpoints': True, 'encoder_dropout': 0.1, 'decoder_dropout': 0.1, 'dim_embedding': 256, 'attention_heads': 4, 'dim_feedforward_encoder': 1024, 'dim_feedforward_decoder': 1024, 'max_seq_len': 300, 'n_encoder_layers': 3, 'n_decoder_layers': 3, 'encoder_embed_path': None, 'decoder_embed_path': None, 'seed': 42, 'input': 'cz-en/data/raw/test.cz', 'checkpoint_path': 'cz-en/checkpoints/checkpoint_best.pt', 'output': 'cz-en/output.txt', 'max_len': 300, 'bleu': False, 'reference': None\}\
+Traceback (most recent call last):\
+  File "/data/oingal/atmt_2025/translate.py", line 186, in <module>\
+    main(args)\
+  File "/data/oingal/atmt_2025/translate.py", line 67, in main\
+    with open(args.input, encoding="utf-8") as f:\
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+FileNotFoundError: [Errno 2] No such file or directory: 'cz-en/data/raw/test.cz'}
