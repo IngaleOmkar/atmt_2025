@@ -5,7 +5,7 @@
 #SBATCH --mem=16GB
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=1
-#SBATCH --output=out_assignment3.out
+#SBATCH --output=out_a3_p2_beam_10.out
 
 module load gpu
 module load mamba
@@ -19,6 +19,8 @@ python translate.py \
     --src-tokenizer ~/data/atmt_2025/cz-en/tokenizers/cz-bpe-8000.model \
     --tgt-tokenizer ~/data/atmt_2025/cz-en/tokenizers/en-bpe-8000.model \
     --checkpoint-path ~/data/atmt_2025/cz-en/checkpoints/checkpoint_best.pt \
-    --output ~/data/a3/atmt_2025/Assignment\ 3/output-a3.txt \
+    --output ~/data/a3/atmt_2025/Assignment\ 3/output-a3-beam10.txt \
     --max-len 300 \
-    --beam-size 5
+    --bleu \
+    --reference ~/data/a3/atmt_2025/Assignment\ 3/toy_example/data/raw/test.en \
+    --beam-size 10
