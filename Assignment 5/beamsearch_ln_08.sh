@@ -5,7 +5,7 @@
 #SBATCH --mem=16GB
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=1
-#SBATCH --output=out_a3_p2_beam_7.out
+#SBATCH --output=out_a5_beam_ln_08.out
 
 module load gpu
 module load mamba
@@ -15,12 +15,13 @@ export XLA_FLAGS=--xla_gpu_cuda_data_dir=$CONDA_PREFIX/pkgs/cuda-toolkit
 # TRANSLATE
 python translate.py \
     --cuda \
-    --input ~/data/a3/atmt_2025/Assignment\ 3/toy_example/data/raw/test.cz \
+    --input ~/data/a5/atmt_2025/Assignment\ 5/toy_example/data/raw/test.cz \
     --src-tokenizer ~/data/atmt_2025/cz-en/tokenizers/cz-bpe-8000.model \
     --tgt-tokenizer ~/data/atmt_2025/cz-en/tokenizers/en-bpe-8000.model \
     --checkpoint-path ~/data/atmt_2025/cz-en/checkpoints/checkpoint_best.pt \
-    --output ~/data/a3/atmt_2025/Assignment\ 3/output-a3-beam7.txt \
+    --output ~/data/a5/atmt_2025/Assignment\ 5/output-a5-beam-ln-08.txt \
     --max-len 300 \
     --bleu \
-    --reference ~/data/a3/atmt_2025/Assignment\ 3/toy_example/data/raw/test.en \
-    --beam-size 7
+    --reference ~/data/a5/atmt_2025/Assignment\ 5/toy_example/data/raw/test.en \
+    --beam-size 7 \
+    --alpha 0.8
