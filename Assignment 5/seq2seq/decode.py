@@ -144,7 +144,6 @@ def beam_search_decode_relative_pruning(model: Seq2SeqModel, src_tokens: torch.T
     best_seq, _ = beams[0]
     return [best_seq.squeeze(0).tolist()]
 
-
 def beam_search_decode_maximum_candidate(model: Seq2SeqModel, src_tokens: torch.Tensor, src_pad_mask: torch.Tensor, max_out_len: int,
                                          tgt_tokenizer: spm.SentencePieceProcessor, args, device: torch.device, beam_size: int = 5, 
                                          alpha: float = 0.7, mc: int = 3):
@@ -198,27 +197,15 @@ def beam_search_decode_maximum_candidate(model: Seq2SeqModel, src_tokens: torch.
             # Keep only top mc candidates from each history
             pruned_beams.extend(candidates_sorted[:mc])
         
-        # If we have too many total candidates after per-group pruning,
-        # sort all pruned beams and keep top beam_size
-        if len(pruned_beams) > beam_size:
-            pruned_beams = sorted(pruned_beams, 
-                                 key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), 
-                                 reverse=True)[:beam_size]
-        elif len(pruned_beams) < beam_size:
-            # If we don't have enough candidates, fill with best overall
-            all_sorted = sorted(new_beams, 
-                               key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), 
-                               reverse=True)
-            # Add additional candidates without exceeding beam_size
-            added = 0
-            for candidate in all_sorted:
-                if candidate not in pruned_beams:
-                    pruned_beams.append(candidate)
-                    added += 1
-                    if len(pruned_beams) >= beam_size:
-                        break
+        # Get normalized scores for all candidates
+        normalized_scores = []
+        for seq, score in pruned_beams:
+            norm_score = score / ((5 + seq.size(1) - 1) ** alpha / (6 ** alpha))
+            normalized_scores.append((seq, score, norm_score))
         
-        beams = pruned_beams
+        # Sort by normalized score and keep top beam_size
+        normalized_scores.sort(key=lambda x: x[2], reverse=True)
+        beams = [(seq, score) for seq, score, _ in normalized_scores[:beam_size]]
 
         # Early stopping if all beams end with EOS
         if all(seq[0, -1].item() == EOS for seq, _ in beams):
