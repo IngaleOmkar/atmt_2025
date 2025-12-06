@@ -177,7 +177,7 @@ def main(args):
                                               device=DEVICE,
                                               beam_size=args.beam_size,
                                               alpha=args.alpha,
-                                              rp_beta=args.rp_beta)
+                                              beta=args.rp_beta)
                 elif args.maximum_candidates:
                     prediction = beam_search_decode_maximum_candidate(model=model,
                                               src_tokens=src_tokens,
