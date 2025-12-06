@@ -168,37 +168,43 @@ def main(args):
                                       device=DEVICE)
             else:
                 if args.relative_pruning:
-                    prediction = beam_search_decode_relative_pruning(model=model,
-                                              src_tokens=src_tokens,
-                                              src_pad_mask=src_pad_mask,
-                                              max_out_len=args.max_len,
-                                              tgt_tokenizer=tgt_tokenizer,
-                                              args=args,
-                                              device=DEVICE,
-                                              beam_size=args.beam_size,
-                                              alpha=args.alpha,
-                                              beta=args.rp_beta)
+                    prediction = beam_search_decode_relative_pruning(
+                        model=model,
+                        src_tokens=src_tokens,
+                        src_pad_mask=src_pad_mask,
+                        max_out_len=args.max_len,
+                        tgt_tokenizer=tgt_tokenizer,
+                        args=args,
+                        device=DEVICE,
+                        beam_size=args.beam_size,
+                        alpha=args.alpha,
+                        rp=args.rp_beta  # Changed from beta to rp
+                    )
                 elif args.maximum_candidates:
-                    prediction = beam_search_decode_maximum_candidate(model=model,
-                                              src_tokens=src_tokens,
-                                              src_pad_mask=src_pad_mask,
-                                              max_out_len=args.max_len,
-                                              tgt_tokenizer=tgt_tokenizer,
-                                              args=args,
-                                              device=DEVICE,
-                                              beam_size=args.beam_size,
-                                              alpha=args.alpha,
-                                              max_candidates=args.mc_size)
+                    prediction = beam_search_decode_maximum_candidate(
+                        model=model,
+                        src_tokens=src_tokens,
+                        src_pad_mask=src_pad_mask,
+                        max_out_len=args.max_len,
+                        tgt_tokenizer=tgt_tokenizer,
+                        args=args,
+                        device=DEVICE,
+                        beam_size=args.beam_size,
+                        alpha=args.alpha,
+                        mc=args.mc_size  # Changed from max_candidates to mc
+                    )
                 else:
-                    prediction = beam_search_decode(model=model,
-                                              src_tokens=src_tokens,
-                                              src_pad_mask=src_pad_mask,
-                                              max_out_len=args.max_len,
-                                              tgt_tokenizer=tgt_tokenizer,
-                                              args=args,
-                                              device=DEVICE,
-                                              beam_size=args.beam_size,
-                                              alpha=args.alpha)
+                    prediction = beam_search_decode(
+                        model=model,
+                        src_tokens=src_tokens,
+                        src_pad_mask=src_pad_mask,
+                        max_out_len=args.max_len,
+                        tgt_tokenizer=tgt_tokenizer,
+                        args=args,
+                        device=DEVICE,
+                        beam_size=args.beam_size,
+                        alpha=args.alpha
+                    )
             #----------------------------------------
 
         # Remove BOS and decode each sentence

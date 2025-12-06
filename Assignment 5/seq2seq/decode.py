@@ -1,6 +1,7 @@
 import torch
 import sentencepiece as spm
 from seq2seq.models import Seq2SeqModel
+import math
 
 def decode(model: Seq2SeqModel, src_tokens: torch.Tensor, src_pad_mask: torch.Tensor, max_out_len: int,
            tgt_tokenizer: spm.SentencePieceProcessor, args, device: torch.device):
@@ -79,79 +80,226 @@ def beam_search_decode(model: Seq2SeqModel, src_tokens: torch.Tensor, src_pad_ma
     # __QUESTION 6: What is returned, and why are we squeezing, converting to list and wrapping in another list here?
     return [best_seq.squeeze(0).tolist()]
 
+
 def beam_search_decode_relative_pruning(model: Seq2SeqModel, src_tokens: torch.Tensor, src_pad_mask: torch.Tensor, max_out_len: int,
                                         tgt_tokenizer: spm.SentencePieceProcessor, args, device: torch.device, beam_size: int = 5, 
-                                        alpha: float = 0.7, beta: float = 0.1):
-    """Beam Search with relative pruning: prunes candidates within beta of the best score."""
+                                        alpha: float = 0.7, rp: float = 0.6):
+    """Beam Search with relative pruning as described in paper: prunes candidates with score <= rp * best_score."""
     model.eval()
     BOS, EOS, PAD = tgt_tokenizer.bos_id(), tgt_tokenizer.eos_id(), tgt_tokenizer.pad_id()
-    beams = [(torch.tensor([[BOS]], device=device), 0.0)]
+    beams = [(torch.tensor([[BOS]], device=device), 0.0)]  # (sequence, score)
+    
     for _ in range(max_out_len):
         new_beams = []
+        
         for seq, score in beams:
+            # If sequence already ended with EOS, keep as is
             if seq[0, -1].item() == EOS:
                 new_beams.append((seq, score))
                 continue
+                
             with torch.no_grad():
+                # Handle sequence length constraints
                 max_len = model.decoder.pos_embed.size(1)
                 if seq.size(1) > max_len:
                     seq = seq[:, :max_len]
+                
                 trg_pad_mask = (seq == PAD)[:, None, None, :]
                 logits = model(src_tokens, src_pad_mask, seq, trg_pad_mask)[:, -1, :]
                 log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
                 topk_log_probs, topk_ids = log_probs.topk(beam_size, dim=-1)
 
+            # Expand each beam
             for k in range(beam_size):
                 new_seq = torch.cat([seq, topk_ids[:, k].unsqueeze(0)], dim=1)
                 new_score = score + topk_log_probs[:, k].item()
                 new_beams.append((new_seq, new_score))
 
-        # Sort by length-normalized score
-        new_beams_sorted = sorted(new_beams, key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), reverse=True)
-        
-        # Relative pruning: keep candidates within beta of the best score
-        if new_beams_sorted:
-            best_normalized_score = new_beams_sorted[0][1] / ((5 + new_beams_sorted[0][0].size(1) - 1) ** alpha / (6 ** alpha))
-            beams = [beam for beam in new_beams_sorted 
-                    if beam[1] / ((5 + beam[0].size(1) - 1) ** alpha / (6 ** alpha)) >= best_normalized_score - beta][:beam_size]
-        
+        # Apply relative pruning before selecting top beams
+        if new_beams:
+            # Find best raw score (not normalized)
+            best_score = max(score for _, score in new_beams)
+            
+            threshold = best_score + math.log(rp) if rp > 0 else float('-inf')
+            
+            # Keep candidates with score >= threshold (since higher log prob is better)
+            pruned_beams = [(seq, score) for seq, score in new_beams if score >= threshold]
+            
+            # If pruning removed too many, keep at least beam_size candidates
+            if len(pruned_beams) < beam_size:
+                # Fall back to top beams without pruning
+                pruned_beams = sorted(new_beams, key=lambda x: x[1], reverse=True)[:beam_size]
+            
+            # Apply length normalization and select top beams
+            beams = sorted(pruned_beams, 
+                          key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), 
+                          reverse=True)[:beam_size]
+        else:
+            break
+
+        # Early stopping if all beams end with EOS
         if all(seq[0, -1].item() == EOS for seq, _ in beams):
             break
+    
     best_seq, _ = beams[0]
     return [best_seq.squeeze(0).tolist()]
 
+
 def beam_search_decode_maximum_candidate(model: Seq2SeqModel, src_tokens: torch.Tensor, src_pad_mask: torch.Tensor, max_out_len: int,
                                          tgt_tokenizer: spm.SentencePieceProcessor, args, device: torch.device, beam_size: int = 5, 
-                                         alpha: float = 0.7, max_candidates: int = 20):
-    """Beam Search with maximum candidate pruning: considers more candidates before pruning to beam_size."""
+                                         alpha: float = 0.7, mc: int = 3):
+    """Beam Search with maximum candidates per node as described in paper: 
+       limits number of candidates with same history to mc."""
     model.eval()
     BOS, EOS, PAD = tgt_tokenizer.bos_id(), tgt_tokenizer.eos_id(), tgt_tokenizer.pad_id()
-    beams = [(torch.tensor([[BOS]], device=device), 0.0)]
+    beams = [(torch.tensor([[BOS]], device=device), 0.0)]  # (sequence, score)
+    
     for _ in range(max_out_len):
         new_beams = []
+        
         for seq, score in beams:
+            # If sequence already ended with EOS, keep as is
             if seq[0, -1].item() == EOS:
                 new_beams.append((seq, score))
                 continue
+                
             with torch.no_grad():
+                # Handle sequence length constraints
                 max_len = model.decoder.pos_embed.size(1)
                 if seq.size(1) > max_len:
                     seq = seq[:, :max_len]
+                
                 trg_pad_mask = (seq == PAD)[:, None, None, :]
                 logits = model(src_tokens, src_pad_mask, seq, trg_pad_mask)[:, -1, :]
                 log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
-                # Expand to more candidates than beam_size
-                topk_log_probs, topk_ids = log_probs.topk(max_candidates, dim=-1)
+                topk_log_probs, topk_ids = log_probs.topk(beam_size, dim=-1)
 
-            for k in range(max_candidates):
+            # Expand each beam
+            for k in range(beam_size):
                 new_seq = torch.cat([seq, topk_ids[:, k].unsqueeze(0)], dim=1)
                 new_score = score + topk_log_probs[:, k].item()
                 new_beams.append((new_seq, new_score))
 
-        # Sort by length-normalized score and keep top beam_size
-        beams = sorted(new_beams, key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), reverse=True)[:beam_size]
+        # Group beams by their history (all tokens except the last one)
+        history_groups = {}
+        for seq, score in new_beams:
+            # Extract history: all tokens except the last one
+            history = tuple(seq.squeeze(0).tolist()[:-1])
+            
+            if history not in history_groups:
+                history_groups[history] = []
+            history_groups[history].append((seq, score))
         
+        # For each history group, keep only top mc candidates
+        pruned_beams = []
+        for history, candidates in history_groups.items():
+            # Sort candidates by score within this history group
+            candidates_sorted = sorted(candidates, key=lambda x: x[1], reverse=True)
+            # Keep only top mc candidates from each history
+            pruned_beams.extend(candidates_sorted[:mc])
+        
+        # If we have too many total candidates after per-group pruning,
+        # sort all pruned beams and keep top beam_size
+        if len(pruned_beams) > beam_size:
+            pruned_beams = sorted(pruned_beams, 
+                                 key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), 
+                                 reverse=True)[:beam_size]
+        elif len(pruned_beams) < beam_size:
+            # If we don't have enough candidates, fill with best overall
+            all_sorted = sorted(new_beams, 
+                               key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), 
+                               reverse=True)
+            # Add additional candidates without exceeding beam_size
+            added = 0
+            for candidate in all_sorted:
+                if candidate not in pruned_beams:
+                    pruned_beams.append(candidate)
+                    added += 1
+                    if len(pruned_beams) >= beam_size:
+                        break
+        
+        beams = pruned_beams
+
+        # Early stopping if all beams end with EOS
         if all(seq[0, -1].item() == EOS for seq, _ in beams):
             break
+    
     best_seq, _ = beams[0]
     return [best_seq.squeeze(0).tolist()]
+
+# def beam_search_decode_relative_pruning(model: Seq2SeqModel, src_tokens: torch.Tensor, src_pad_mask: torch.Tensor, max_out_len: int,
+#                                         tgt_tokenizer: spm.SentencePieceProcessor, args, device: torch.device, beam_size: int = 5, 
+#                                         alpha: float = 0.7, beta: float = 0.1):
+#     """Beam Search with relative pruning: prunes candidates within beta of the best score."""
+#     model.eval()
+#     BOS, EOS, PAD = tgt_tokenizer.bos_id(), tgt_tokenizer.eos_id(), tgt_tokenizer.pad_id()
+#     beams = [(torch.tensor([[BOS]], device=device), 0.0)]
+#     for _ in range(max_out_len):
+#         new_beams = []
+#         for seq, score in beams:
+#             if seq[0, -1].item() == EOS:
+#                 new_beams.append((seq, score))
+#                 continue
+#             with torch.no_grad():
+#                 max_len = model.decoder.pos_embed.size(1)
+#                 if seq.size(1) > max_len:
+#                     seq = seq[:, :max_len]
+#                 trg_pad_mask = (seq == PAD)[:, None, None, :]
+#                 logits = model(src_tokens, src_pad_mask, seq, trg_pad_mask)[:, -1, :]
+#                 log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
+#                 topk_log_probs, topk_ids = log_probs.topk(beam_size, dim=-1)
+
+#             for k in range(beam_size):
+#                 new_seq = torch.cat([seq, topk_ids[:, k].unsqueeze(0)], dim=1)
+#                 new_score = score + topk_log_probs[:, k].item()
+#                 new_beams.append((new_seq, new_score))
+
+#         # Sort by length-normalized score
+#         new_beams_sorted = sorted(new_beams, key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), reverse=True)
+        
+#         # Relative pruning: keep candidates within beta of the best score
+#         if new_beams_sorted:
+#             best_normalized_score = new_beams_sorted[0][1] / ((5 + new_beams_sorted[0][0].size(1) - 1) ** alpha / (6 ** alpha))
+#             beams = [beam for beam in new_beams_sorted 
+#                     if beam[1] / ((5 + beam[0].size(1) - 1) ** alpha / (6 ** alpha)) >= best_normalized_score - beta][:beam_size]
+        
+#         if all(seq[0, -1].item() == EOS for seq, _ in beams):
+#             break
+#     best_seq, _ = beams[0]
+#     return [best_seq.squeeze(0).tolist()]
+
+# def beam_search_decode_maximum_candidate(model: Seq2SeqModel, src_tokens: torch.Tensor, src_pad_mask: torch.Tensor, max_out_len: int,
+#                                          tgt_tokenizer: spm.SentencePieceProcessor, args, device: torch.device, beam_size: int = 5, 
+#                                          alpha: float = 0.7, max_candidates: int = 20):
+#     """Beam Search with maximum candidate pruning: considers more candidates before pruning to beam_size."""
+#     model.eval()
+#     BOS, EOS, PAD = tgt_tokenizer.bos_id(), tgt_tokenizer.eos_id(), tgt_tokenizer.pad_id()
+#     beams = [(torch.tensor([[BOS]], device=device), 0.0)]
+#     for _ in range(max_out_len):
+#         new_beams = []
+#         for seq, score in beams:
+#             if seq[0, -1].item() == EOS:
+#                 new_beams.append((seq, score))
+#                 continue
+#             with torch.no_grad():
+#                 max_len = model.decoder.pos_embed.size(1)
+#                 if seq.size(1) > max_len:
+#                     seq = seq[:, :max_len]
+#                 trg_pad_mask = (seq == PAD)[:, None, None, :]
+#                 logits = model(src_tokens, src_pad_mask, seq, trg_pad_mask)[:, -1, :]
+#                 log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
+#                 # Expand to more candidates than beam_size
+#                 topk_log_probs, topk_ids = log_probs.topk(max_candidates, dim=-1)
+
+#             for k in range(max_candidates):
+#                 new_seq = torch.cat([seq, topk_ids[:, k].unsqueeze(0)], dim=1)
+#                 new_score = score + topk_log_probs[:, k].item()
+#                 new_beams.append((new_seq, new_score))
+
+#         # Sort by length-normalized score and keep top beam_size
+#         beams = sorted(new_beams, key=lambda x: x[1] / ((5 + x[0].size(1) - 1) ** alpha / (6 ** alpha)), reverse=True)[:beam_size]
+        
+#         if all(seq[0, -1].item() == EOS for seq, _ in beams):
+#             break
+#     best_seq, _ = beams[0]
+#     return [best_seq.squeeze(0).tolist()]
