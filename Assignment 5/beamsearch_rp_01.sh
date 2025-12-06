@@ -26,4 +26,4 @@ python translate.py \
     --beam-size 7 \
     --alpha 0.2 \
     --relative_pruning \
-    --beta 0.1
+    --rp_beta 0.1
